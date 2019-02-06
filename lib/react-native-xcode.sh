@@ -84,6 +84,14 @@ fi
 
 [ -z "$CLI_PATH" ] && export CLI_PATH="$REACT_NATIVE_DIR/local-cli/cli.js"
 
+[ -z "$BUNDLE_COMMAND" ] && BUNDLE_COMMAND="bundle"
+
+if [[ -z "$BUNDLE_CONFIG" ]]; then
+  CONFIG_ARG=""
+else
+  CONFIG_ARG="--config $(pwd)/$BUNDLE_CONFIG"
+fi
+
 nodejs_not_found()
 {
   echo "error: Can't find '$NODE_BINARY' binary to build React Native bundle" >&2
@@ -107,7 +115,12 @@ eval 'case "$CONFIGURATION" in
     PLIST=$TARGET_BUILD_DIR/$INFOPLIST_PATH
     IP=$(ipconfig getifaddr en0)
     if [ -z "$IP" ]; then
-      IP=$(ifconfig | grep 'inet ' | grep -v ' 127.' | cut -d\   -f2  | awk 'NR==1{print $1}')
+      IP=$(ifconfig | grep "inet " | grep -v " 127." | cut -d\   -f2  | awk "NR==1{print $1}")
+    fi
+
+    VPNIP=$(ifconfig | grep -- "-->" | cut -d\   -f2)
+    if [ "$VPNIP" ]; then
+      IP="$VPNIP"
     fi
 
     VPNIP=$(ifconfig | grep -- "-->" | cut -d\   -f2)
@@ -132,13 +145,15 @@ fi
 
 BUNDLE_FILE="$DEST/main.jsbundle"
 
-$NODE_BINARY "$CLI_PATH" bundle \
+$NODE_BINARY "$CLI_PATH" $BUNDLE_COMMAND \
+  $CONFIG_ARG \
   --entry-file "$ENTRY_FILE" \
   --platform ios \
   --dev $DEV \
   --reset-cache \
   --bundle-output "$BUNDLE_FILE" \
-  --assets-dest "$DEST"
+  --assets-dest "$DEST" \
+	$EXTRA_PACKAGER_ARGS
 
 # XCode randomly generates user specific workspace files whenever it feels like it.
 # We want these hidden at all times, so go ahead and clean up if they're showing now.
